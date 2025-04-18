@@ -21,6 +21,7 @@
 #define MAX_CMD_LENGTH 1024
 #define MAX_PROJECTS 50
 #define MAX_NAME_LENGTH 64
+#define MAX_PROJECT_ENTRIES 100
 
 /* Color pairs */
 #define COLOR_HEADER 1
@@ -39,6 +40,7 @@
 #define MENU_KILL 3
 #define MENU_PROJECT 4
 #define MENU_HELP 5
+#define MENU_PROJECT_LIST 6
 
 /* Screen data structure */
 typedef struct {
@@ -57,6 +59,12 @@ typedef struct {
     int num_components;
 } Project;
 
+/* Project entry structure for list-projects */
+typedef struct {
+    char key[MAX_NAME_LENGTH];
+    char directory[MAX_LINE_LENGTH];
+} ProjectEntry;
+
 /* Global variables */
 Screen screens[MAX_SCREENS];
 int screen_count = 0;
@@ -69,6 +77,9 @@ int project_count = 0;
 int selected_project = 0;
 char new_screen_name[MAX_NAME_LENGTH] = "";
 int cursor_pos = 0;
+ProjectEntry project_entries[MAX_PROJECT_ENTRIES];
+int project_entry_count = 0;
+int selected_project_entry = 0;
 
 /* Function prototypes */
 void fetch_screens();
@@ -78,11 +89,15 @@ void draw_create_menu(WINDOW *win);
 void draw_kill_menu(WINDOW *win);
 void draw_project_menu(WINDOW *win);
 void draw_help_menu(WINDOW *win);
+void draw_project_list_menu(WINDOW *win);
 void activate_screen(int index);
 void kill_screen(int index);
 void create_screen(char *name);
 void load_projects();
 void create_project_screens(int project_index);
+void load_project_entries();
+void create_project_entry_screens(int entry_index);
+int screen_exists(const char *name);
 void set_status(const char *message, int type);
 void handle_input(int ch);
 
@@ -116,6 +131,9 @@ int main() {
     /* Get initial list of screens */
     fetch_screens();
     
+    /* Initialize project entries */
+    project_entry_count = 0;
+    
     /* Main loop */
     while (1) {
         switch (current_menu) {
@@ -136,6 +154,9 @@ int main() {
                 break;
             case MENU_HELP:
                 draw_help_menu(stdscr);
+                break;
+            case MENU_PROJECT_LIST:
+                draw_project_list_menu(stdscr);
                 break;
         }
         
@@ -182,6 +203,12 @@ void handle_input(int ch) {
                 case 'h':
                 case '?':
                     current_menu = MENU_HELP;
+                    break;
+                case '6':
+                case 'l':
+                    current_menu = MENU_PROJECT_LIST;
+                    selected_project_entry = 0;
+                    load_project_entries();
                     break;
                 case 'q':
                     endwin();
@@ -308,6 +335,35 @@ void handle_input(int ch) {
                     break;
             }
             break;
+            
+        case MENU_PROJECT_LIST:
+            switch (ch) {
+                case KEY_UP:
+                    if (selected_project_entry > 0) {
+                        selected_project_entry--;
+                    }
+                    break;
+                case KEY_DOWN:
+                    if (selected_project_entry < project_entry_count - 1) {
+                        selected_project_entry++;
+                    }
+                    break;
+                case '\n': /* Enter key */
+                    if (project_entry_count > 0) {
+                        create_project_entry_screens(selected_project_entry);
+                    }
+                    break;
+                case 'r':
+                    load_project_entries();
+                    set_status("Project list refreshed", COLOR_SUCCESS);
+                    break;
+                case 'q':
+                case KEY_BACKSPACE:
+                case 27: /* ESC key */
+                    current_menu = MENU_MAIN;
+                    break;
+            }
+            break;
     }
 }
 
@@ -337,7 +393,8 @@ void draw_menu(WINDOW *win) {
     mvprintw(6, 5, "3. Kill Screen Session");
     mvprintw(7, 5, "4. Project Templates");
     mvprintw(8, 5, "5. Help");
-    mvprintw(10, 5, "q. Quit");
+    mvprintw(9, 5, "6. Project List Screens");
+    mvprintw(11, 5, "q. Quit");
     attroff(COLOR_PAIR(COLOR_NORMAL));
     
     /* Draw status message if any */
@@ -748,6 +805,74 @@ void draw_project_menu(WINDOW *win) {
    refresh();
 }
 
+/* Project list menu display */
+void draw_project_list_menu(WINDOW *win) {
+    int i;
+    int start_y = 4;
+    int width, height;
+    
+    getmaxyx(win, height, width);
+    
+    wclear(win);
+    
+    /* Draw header */
+    attron(COLOR_PAIR(COLOR_HEADER));
+    mvprintw(1, 2, "PROJECT LIST");
+    attroff(COLOR_PAIR(COLOR_HEADER));
+    
+    /* Draw help text */
+    attron(COLOR_PAIR(COLOR_HELP));
+    mvprintw(2, 2, "Use UP/DOWN to navigate, Enter to create screens, r to refresh, q to go back");
+    attroff(COLOR_PAIR(COLOR_HELP));
+    
+    /* If no projects found */
+    if (project_entry_count == 0) {
+        attron(COLOR_PAIR(COLOR_ERROR));
+        mvprintw(start_y + 1, 2, "No projects found.");
+        attroff(COLOR_PAIR(COLOR_ERROR));
+    } else {
+        /* Draw project list with headers */
+        mvprintw(start_y - 1, 2, "%-5s %-30s %-50s", "#", "KEY", "DIRECTORY");
+        
+        /* Draw project entries */
+        for (i = 0; i < project_entry_count; i++) {
+            if (i >= height - start_y - 3) {
+                break; /* Don't draw beyond window height */
+            }
+            
+            if (i == selected_project_entry) {
+                attron(COLOR_PAIR(COLOR_SELECTED));
+                mvprintw(start_y + i, 2, "%-5d %-30s %-50s", 
+                        i + 1, 
+                        project_entries[i].key, 
+                        project_entries[i].directory);
+                attroff(COLOR_PAIR(COLOR_SELECTED));
+            } else {
+                attron(COLOR_PAIR(COLOR_NORMAL));
+                mvprintw(start_y + i, 2, "%-5d %-30s %-50s", 
+                        i + 1, 
+                        project_entries[i].key, 
+                        project_entries[i].directory);
+                attroff(COLOR_PAIR(COLOR_NORMAL));
+            }
+        }
+    }
+    
+    /* Draw status message if any */
+    if (strlen(status_message) > 0) {
+        attron(COLOR_PAIR(status_type));
+        mvprintw(height - 2, 2, "Status: %s", status_message);
+        attroff(COLOR_PAIR(status_type));
+    }
+    
+    /* Draw footer */
+    attron(COLOR_PAIR(COLOR_HELP));
+    mvprintw(height - 1, 2, "Found %d projects", project_entry_count);
+    attroff(COLOR_PAIR(COLOR_HELP));
+    
+    refresh();
+}
+
 /* Help menu display */
 void draw_help_menu(WINDOW *win) {
     int width, height;
@@ -771,6 +896,7 @@ void draw_help_menu(WINDOW *win) {
     mvprintw(y++, 4, "3 or k: Kill a screen session");
     mvprintw(y++, 4, "4 or p: Select a project template");
     mvprintw(y++, 4, "5, h or ?: Show this help");
+    mvprintw(y++, 4, "6 or l: Load project list and create screens");
     mvprintw(y++, 4, "q: Quit");
     y++;
     mvprintw(y++, 2, "Navigation:");
@@ -889,6 +1015,73 @@ void load_projects() {
     /* TODO: Load more projects from a config file */
 }
 
+/* Load project entries from list-projects script */
+void load_project_entries() {
+    FILE *fp;
+    char line[MAX_LINE_LENGTH];
+    char *key, *directory;
+    
+    /* Clear existing project entries */
+    project_entry_count = 0;
+    
+    /* Execute list-projects script and capture output */
+    fp = popen("scripts/list-projects", "r");
+    if (fp == NULL) {
+        set_status("Failed to run list-projects script", COLOR_ERROR);
+        return;
+    }
+    
+    /* Read output line by line and parse tab-separated values */
+    while (fgets(line, sizeof(line), fp) != NULL && project_entry_count < MAX_PROJECT_ENTRIES) {
+        /* Remove trailing newline */
+        line[strcspn(line, "\n")] = 0;
+        
+        /* Split by tab */
+        key = strtok(line, "\t");
+        if (key == NULL) {
+            continue;
+        }
+        
+        directory = strtok(NULL, "\t");
+        if (directory == NULL) {
+            continue;
+        }
+        
+        /* Store data in project_entries array */
+        strncpy(project_entries[project_entry_count].key, key, MAX_NAME_LENGTH - 1);
+        project_entries[project_entry_count].key[MAX_NAME_LENGTH - 1] = '\0';
+        
+        strncpy(project_entries[project_entry_count].directory, directory, MAX_LINE_LENGTH - 1);
+        project_entries[project_entry_count].directory[MAX_LINE_LENGTH - 1] = '\0';
+        
+        project_entry_count++;
+    }
+    
+    pclose(fp);
+    
+    if (project_entry_count == 0) {
+        set_status("No projects found or list-projects script failed", COLOR_ERROR);
+    } else {
+        set_status("Loaded project entries successfully", COLOR_SUCCESS);
+    }
+}
+
+/* Check if a screen with the given name already exists */
+int screen_exists(const char *name) {
+    int i;
+    
+    /* Make sure we have the latest screen data */
+    fetch_screens();
+    
+    for (i = 0; i < screen_count; i++) {
+        if (strcmp(screens[i].name, name) == 0) {
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
 /* Create screen sessions for a project template */
 void create_project_screens(int project_index) {
     int i;
@@ -907,4 +1100,33 @@ void create_project_screens(int project_index) {
     }
     
     set_status("Project screens created", COLOR_SUCCESS);
+}
+
+/* Create a screen for a project entry */
+void create_project_entry_screens(int entry_index) {
+    char screen_name[MAX_NAME_LENGTH];
+    
+    if (entry_index < 0 || entry_index >= project_entry_count) {
+        set_status("Invalid project entry index", COLOR_ERROR);
+        return;
+    }
+    
+    /* Use the KEY as the screen name */
+    strncpy(screen_name, project_entries[entry_index].key, MAX_NAME_LENGTH - 1);
+    screen_name[MAX_NAME_LENGTH - 1] = '\0';
+    
+    /* Check if a screen with this name already exists */
+    if (screen_exists(screen_name)) {
+        set_status("Screen with this name already exists", COLOR_ERROR);
+        return;
+    }
+    
+    /* Create the screen with the KEY as the name */
+    create_screen(screen_name);
+    
+    /* Create a message showing what was created */
+    char message[MAX_LINE_LENGTH];
+    snprintf(message, MAX_LINE_LENGTH - 1, "Created screen '%s' for project", 
+            screen_name);
+    set_status(message, COLOR_SUCCESS);
 }

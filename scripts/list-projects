@@ -1,0 +1,14 @@
+#!/bin/bash
+
+ROOTPATH="/home/bisenbek/projects"
+
+while read -r ROW; do
+	DIRNAME=$(dirname ${ROW})
+	REALPATH=$(realpath ${DIRNAME})
+	IFS='/' read -ra KEY <<<${DIRNAME}
+	KEYNAME=$(echo "${KEY[@]:1}" \
+		| tr  [:upper:] [:lower:] \
+		| sed -rE "s/[^a-z0-9 ]/ /g" \
+		| sed -rE "s/[ ]{1,}/-/g")
+	echo "${KEYNAME}	${REALPATH}"
+done<<<$(find ../ | grep CLAUDE.md | sort | uniq)

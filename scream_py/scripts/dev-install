@@ -1,0 +1,18 @@
+#!/bin/bash
+# dev-install script for scream-cli package
+# Installs package in development mode
+
+set -e  # Exit immediately if a command exits with a non-zero status
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PACKAGE_DIR="$( cd "$SCRIPT_DIR/.." &> /dev/null && pwd )"
+
+echo "Installing scream-cli package in development mode from $PACKAGE_DIR"
+
+# Install in development mode
+echo "Installing in development mode..."
+cd "$PACKAGE_DIR"
+pip install -e . --user
+
+echo "Installation complete! You can now run 'scream' to use the package."
+echo "Any changes to the source code will be immediately available without reinstallation."

@@ -1,0 +1,25 @@
+#!/bin/bash
+# upgrade script for scream-cli package
+# Rebuilds and reinstalls the package for development
+
+set -e  # Exit immediately if a command exits with a non-zero status
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PACKAGE_DIR="$( cd "$SCRIPT_DIR/.." &> /dev/null && pwd )"
+
+echo "Upgrading scream-cli package from $PACKAGE_DIR"
+
+# Build the package
+echo "Building package..."
+cd "$PACKAGE_DIR"
+python3 -m build
+
+# Uninstall previous version if installed
+echo "Uninstalling previous version if it exists..."
+pip uninstall -y scream-cli || true
+
+# Install the new version
+echo "Installing new version..."
+pip install --user "$PACKAGE_DIR/dist/scream_cli-"*.whl
+
+echo "Upgrade complete! You can now run 'scream' to use the package."

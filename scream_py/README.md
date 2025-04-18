@@ -1,0 +1,106 @@
+# Scream - User Guide
+
+## Overview
+
+Scream is a comprehensive terminal-based management tool for GNU Screen sessions. It combines multiple screen management functions into a single, easy-to-use interface, eliminating the need for multiple bash scripts and configuration files.
+
+## Features
+
+- **Browse Screen Sessions**: View and connect to existing screen sessions with keyboard navigation
+- **Create New Sessions**: Quickly create named screen sessions
+- **Kill Sessions**: Terminate screen sessions easily
+- **Project Templates**: Create multiple related screen sessions at once using templates
+- **Color-coded Interface**: Visual differentiation between attached and detached sessions
+
+## Installation
+
+### Requirements
+
+- C compiler (GCC recommended)
+- ncurses development library
+- GNU Screen
+
+### Compiling
+
+1. Save the source code as `scream.c`
+2. Compile the program:
+   ```bash
+   gcc -o scream scream.c -lncurses
+   ```
+3. Make it executable:
+   ```bash
+   chmod +x scream
+   ```
+4. Optional: Move to a directory in your PATH:
+   ```bash
+   sudo cp scream /usr/local/bin/
+   ```
+
+## Usage
+
+Run the program:
+```bash
+./scream
+```
+
+### Main Menu
+
+The main menu offers the following options:
+
+1. **Browse Screen Sessions** (b): View and connect to existing screen sessions
+2. **Create New Screen** (c): Start a new named screen session
+3. **Kill Screen Session** (k): Terminate a screen session
+4. **Project Templates** (p): Create multiple sessions from a template
+5. **Help** (h or ?): Display help information
+   
+Press 'q' to quit the application.
+
+### Navigation
+
+- **UP/DOWN arrows**: Move through lists
+- **ENTER**: Select or activate an item
+- **ESC or q**: Return to the previous menu
+- **r**: Refresh the screen list (in browse or kill modes)
+
+### Project Templates
+
+The program comes with several built-in project templates:
+
+1. **web-app**: Creates db, api, and frontend screens
+2. **data-science**: Creates jupyter, data-processor, and visualization screens
+3. **microservices**: Creates auth-service, api-gateway, user-service, notification-service, and logging-service screens
+4. **devops**: Creates monitoring, build-server, staging, and deployment screens
+
+When you select a project template and press Enter, Scream creates all the associated screen sessions with the naming pattern `project-name_component-name`.
+
+## Customization
+
+### Adding Custom Project Templates
+
+Currently, project templates are defined in the `load_projects()` function in the source code. To add your own templates:
+
+1. Edit the source code
+2. Add new templates to the `load_projects()` function
+3. Recompile the program
+
+Future versions may support loading project templates from a configuration file.
+
+## Troubleshooting
+
+If you encounter any issues:
+
+- Make sure GNU Screen is installed and functioning
+- Verify that your terminal supports color
+- Check that you have sufficient permissions to create and manage screen sessions
+- Try running with sudo if you get permission errors
+
+## Technical Details
+
+The program uses the ncurses library for the terminal interface and executes screen commands using system calls. It parses the output of `screen -list` to display information about existing sessions.
+
+### Key Commands Used
+
+- `screen -list`: List all screen sessions
+- `screen -r [id]`: Resume a detached screen session
+- `screen -dmS [name]`: Create a new detached screen session
+- `screen -S [id] -X quit`: Terminate a screen session
